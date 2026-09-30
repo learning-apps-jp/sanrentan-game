@@ -373,6 +373,35 @@ h1 { font-size:clamp(1.2rem,4vw,1.7rem); } h2 { font-size:1.2rem; margin-bottom:
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 [hidden] { display:none !important; }
 @media(max-width:480px) { body { padding:12px; }.card { padding:16px; }.slot-card { flex-wrap:wrap; }.slot-val { flex-basis:calc(100% - 80px); }.slot-controls { margin-left:auto; }.lead-row { padding:12px; }.pass-target { font-size:1.7rem; }.result-grid,.lead-grid { grid-template-columns:1fr; } }
+
+body { align-items:flex-start; padding:20px; min-height:100svh; }
+.app-wrap { max-width:1200px; }
+.answer-content { display:flex; align-items:center; gap:14px; min-width:0; flex:1; }
+.answer-letter { display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; flex-shrink:0; background:rgba(255,255,255,.18); border:1px solid var(--border); border-radius:10px; font-size:1.5rem; font-weight:900; }
+.answer-card { font-size:1.15rem; line-height:1.5; }
+.answer-content > span:last-child { min-width:0; overflow-wrap:anywhere; }
+.g-chip { font-size:1rem; padding:8px 12px; }
+.slot-controls button { min-width:44px; min-height:44px; }
+.sound-btn { min-height:44px; }
+@media(min-width:700px) {
+  .layout-grid-2 { grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:24px; }
+  .layout-grid-2 > div { min-width:0; }
+  .card { padding:24px; }
+  .opt-item { min-height:64px; padding:14px; }
+  .opt-txt { font-size:1.08rem; line-height:1.5; }
+  .slot-card { flex-wrap:wrap; min-height:76px; }
+  .slot-val { flex-basis:calc(100% - 80px); font-size:1.05rem; line-height:1.5; }
+  .slot-controls { margin-left:auto; }
+  .q-theme { font-size:1.3rem; }
+  .guess-row { padding:14px 0; }
+  .pass-card { max-width:700px; margin:auto; }
+  .pass-card .btn { max-width:520px; margin:auto; }
+}
+@media(min-width:1000px) {
+  .slot-card { flex-wrap:nowrap; }
+  .slot-val { flex-basis:auto; }
+}
+
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
 
 </style>
@@ -541,7 +570,7 @@ function options(role) {
 }
 function slots(role) {
   const arr=role==='host'?state.hostAns:state.curGuess;
-  return `<div class="slots-col">${[0,1,2].map(r=>`<div class="slot-card ${arr[r]!==undefined?'filled':''}"><span class="slot-lbl l${r+1}">${['🥇','🥈','🥉'][r]} ${r+1}位</span><span class="slot-val">${arr[r]!==undefined?escapeHtml(state.currentQ.opts[arr[r]]):'未選択'}</span>${arr[r]!==undefined?`<div class="slot-controls"><button onclick="movePick('${role}',${r},-1)" ${r===0?'disabled':''} aria-label="${r+1}位を上へ">↑</button><button onclick="movePick('${role}',${r},1)" ${r>=arr.length-1?'disabled':''} aria-label="${r+1}位を下へ">↓</button><button onclick="removePick('${role}',${r})" aria-label="${r+1}位の選択を解除">✕</button></div>`:''}</div>`).join('')}</div>`;
+  return `<div class="slots-col">${[0,1,2].map(r=>`<div class="slot-card ${arr[r]!==undefined?'filled':''}"><span class="slot-lbl l${r+1}">${['🥇','🥈','🥉'][r]} ${r+1}位</span><span class="slot-val">${arr[r]!==undefined?`${LETTERS[arr[r]]}：${escapeHtml(state.currentQ.opts[arr[r]])}`:'未選択'}</span>${arr[r]!==undefined?`<div class="slot-controls"><button onclick="movePick('${role}',${r},-1)" ${r===0?'disabled':''} aria-label="${r+1}位を上へ">↑</button><button onclick="movePick('${role}',${r},1)" ${r>=arr.length-1?'disabled':''} aria-label="${r+1}位を下へ">↓</button><button onclick="removePick('${role}',${r})" aria-label="${r+1}位の選択を解除">✕</button></div>`:''}</div>`).join('')}</div>`;
 }
 function render() {
   let content='';
@@ -557,7 +586,7 @@ function render() {
     const isHost=state.view==='HOST_SELECT',role=isHost?'host':'guess',p=isHost?host():guessers()[state.curGuesserIdx],arr=isHost?state.hostAns:state.curGuess;
     content=`${progress()}<h2>${isHost?'👑 出題者':'🕵️ 予想中'}：${escapeHtml(p.name)}さん</h2><p class="hint">${isHost?'自分の好みの順に3つ選んでください。':`${escapeHtml(host().name)}さんの1〜3位を予想してください。`} 選んだ順が順位になります。</p><div class="layout-grid-2"><div>${theme()}${slots(role)}<p class="hint">↑↓で順位を入れ替え、✕で解除できます。解除すると後の順位が繰り上がります。</p>${button(arr.length===3?'決定する':'3位まで選んでください',isHost?'commitHost()':'commitGuess()',isHost?'pink':'cyan',arr.length!==3)}</div>${options(role)}</div>`;
   } else if(state.view==='REVEAL') {
-    content=`${progress()}<h2>🎉 全員で答え合わせ！</h2>${theme()}<div class="reveal-stack section-gap">${[0,1,2].map(r=>{const open=state.revealStep>=3-r;return `<div class="answer-card fb-${r+1} ${open?'answer-open':''}"><span class="rev-rank-badge">${r+1}位</span><span>${open?escapeHtml(state.currentQ.opts[state.hostAns[r]]):'？？？'}</span></div>`;}).join('')}</div><div class="guess-box section-gap"><h3>みんなの予想</h3><p class="hint">◎ 順位まで的中 ／ ○ 発表済みの選択肢に含まれる</p>${guessers().map(p=>`<div class="guess-row"><strong>${escapeHtml(p.name)}</strong><div class="guess-chips">${state.guesses[p.id].map((a,r)=>{const exact=state.revealStep>=3-r&&state.hostAns[r]===a,inside=state.hostAns.slice(3-state.revealStep).includes(a);return `<span class="g-chip ${exact?'exact':inside?'in':''}">${r+1}位：${LETTERS[a]} ${exact?'◎':inside?'○':''}</span>`;}).join('')}</div></div>`).join('')}</div><div class="section-gap">${state.revealStep<3?button(`🥁 第${3-state.revealStep}位を発表！`,'handleStepReveal()',state.revealStep===2?'pink':'gold',!!revealTimer):button('🎯 得点を見る','handleCalcScores()','cyan')}</div>`;
+    content=`${progress()}<h2>🎉 全員で答え合わせ！</h2>${theme()}<div class="reveal-stack section-gap">${[0,1,2].map(r=>{const open=state.revealStep>=3-r;return `<div class="answer-card fb-${r+1} ${open?'answer-open':''}"><span class="rev-rank-badge">${r+1}位</span><span class="answer-content">${open?`<span class="answer-letter">${LETTERS[state.hostAns[r]]}</span><span>${escapeHtml(state.currentQ.opts[state.hostAns[r]])}</span>`:'？？？'}</span></div>`;}).join('')}</div><div class="guess-box section-gap"><h3>みんなの予想</h3><p class="hint">◎ 順位まで的中 ／ ○ 発表済みの選択肢に含まれる</p>${guessers().map(p=>`<div class="guess-row"><strong>${escapeHtml(p.name)}</strong><div class="guess-chips">${state.guesses[p.id].map((a,r)=>{const exact=state.revealStep>=3-r&&state.hostAns[r]===a,inside=state.hostAns.slice(3-state.revealStep).includes(a);return `<span class="g-chip ${exact?'exact':inside?'in':''}">${r+1}位：${LETTERS[a]} ${exact?'◎':inside?'○':''}</span>`;}).join('')}</div></div>`).join('')}</div><div class="section-gap">${state.revealStep<3?button(`🥁 第${3-state.revealStep}位を発表！`,'handleStepReveal()',state.revealStep===2?'pink':'gold',!!revealTimer):button('🎯 得点を見る','handleCalcScores()','cyan')}</div>`;
   } else if(state.view==='SCORE_REVEAL') {
     content=`${progress()}<h2>🎯 今回の得点</h2><div class="result-grid">${guessers().map(p=>{const res=evaluateYaku(state.hostAns,state.guesses[p.id]);return `<div class="yaku-card"><div><strong>${escapeHtml(p.name)}</strong><div class="y-name ${res.cls}">${res.name}</div><p class="hint">${res.desc}</p></div><div class="y-pts">+${res.pts}点</div></div>`;}).join('')}</div><p class="hint">💬 出題者に「どうしてその順番にしたの？」と聞いてみよう！</p>${button('📊 ランキングへ','handleGoToScoreBoard()','cyan')}`;
   } else if(state.view==='SCORE_BOARD') {
