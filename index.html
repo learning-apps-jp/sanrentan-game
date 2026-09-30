@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サンレンタン！ - ローカル版</title>
+<!-- 設定不要・完全無料のWebRTC P2P通信ライブラリ -->
+
+<style>
+  :root {
+    --bg: radial-gradient(circle at 50% 20%, #2e0854 0%, #120422 60%, #080210 100%);
+    --card: rgba(30, 16, 56, 0.92);
+    --border: rgba(255, 255, 255, 0.15);
+    --primary: #ff2a6d;
+    --primary-glow: rgba(255, 42, 109, 0.4);
+    --gold: #ffbe0b;
+    --silver: #e2e8f0;
+    --bronze: #d97706;
+    --cyan: #05d9e8;
+    --purple: #9d4edd;
+    --text: #ffffff;
+    --muted: #cbd5e1;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", sans-serif; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px 20px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; }
+
+  .app-wrap {
+    width: 100%;
+    max-width: 1040px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    z-index: 10;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 6px;
+  }
+  .brand {
+    font-size: 1.9rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--gold), var(--primary), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 15px rgba(255, 42, 109, 0.4);
+    cursor: pointer;
+  }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  .room-tag {
+    background: rgba(5, 217, 232, 0.15);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+  .sound-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border);
+    color: #fff;
+    border-radius: 99px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .sound-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+  .card {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 22px;
+    padding: 22px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(16px);
+  }
+
+  .layout-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1.25fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .layout-grid-2 { grid-template-columns: 1fr; }
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px;
+    font-size: 1.05rem;
+    font-weight: 900;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+
+  .btn-pink { background: linear-gradient(135deg, #ff2a6d, #d90429); box-shadow: 0 6px 20px var(--primary-glow); }
+  .btn-gold { background: linear-gradient(135deg, #ffbe0b, #d97706); color: #1a0800; }
+  .btn-cyan { background: linear-gradient(135deg, #05d9e8, #0077b6); color: #011526; }
+  .btn-sub { background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border); color: var(--muted); }
+  .btn-sub:hover { background: rgba(255, 255, 255, 0.15); }
+
+  .q-banner {
+    background: linear-gradient(135deg, rgba(255, 42, 109, 0.2), rgba(157, 78, 221, 0.25));
+    border: 2px solid rgba(255, 42, 109, 0.4);
+    border-radius: 18px;
+    padding: 18px;
+    text-align: center;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .q-badge {
+    display: inline-block;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 4px 14px;
+    border-radius: 99px;
+    margin-bottom: 8px;
+  }
+  .q-theme {
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1.45;
+  }
+  .host-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 190, 11, 0.2);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 4px 14px;
+    border-radius: 99px;
+    font-size: 0.9rem;
+    font-weight: 800;
+    margin-top: 10px;
+  }
+
+  .opt-grid { display: flex; flex-direction: column; gap: 8px; }
+  .opt-item {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: 0.2s;
+    user-select: none;
+  }
+  .opt-item.selectable:hover { background: rgba(255, 255, 255, 0.12); border-color: var(--cyan); }
+  .opt-char {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.12);
+    font-weight: 900;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+  .opt-txt { flex: 1; font-weight: 700; font-size: 0.98rem; }
+
+  .opt-item.sel-1 { border-color: var(--gold); background: rgba(255, 190, 11, 0.25); }
+  .opt-item.sel-1 .opt-char { background: var(--gold); color: #000; }
+  .opt-item.sel-2 { border-color: var(--silver); background: rgba(226, 232, 240, 0.25); }
+  .opt-item.sel-2 .opt-char { background: var(--silver); color: #000; }
+  .opt-item.sel-3 { border-color: var(--bronze); background: rgba(217, 119, 6, 0.25); }
+  .opt-item.sel-3 .opt-char { background: var(--bronze); color: #fff; }
+
+  .rank-pill { font-size: 0.8rem; font-weight: 900; padding: 2px 10px; border-radius: 6px; margin-left: 8px; }
+  .rank-pill.p1 { background: var(--gold); color: #000; }
+  .rank-pill.p2 { background: var(--silver); color: #000; }
+  .rank-pill.p3 { background: var(--bronze); color: #fff; }
+
+  .slots-col { display: flex; flex-direction: column; gap: 10px; }
+  .slot-card {
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .slot-card.filled { border-style: solid; background: rgba(255, 255, 255, 0.08); }
+  .slot-lbl { font-size: 0.95rem; font-weight: 900; width: 64px; flex-shrink: 0; }
+  .slot-lbl.l1 { color: var(--gold); }
+  .slot-lbl.l2 { color: var(--silver); }
+  .slot-lbl.l3 { color: var(--bronze); }
+  .slot-val { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+
+  .pass-card { text-align: center; padding: 36px 20px; }
+  .pass-icon { font-size: 3.8rem; margin-bottom: 12px; animation: bounce 1.8s infinite; }
+  @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  .pass-target { font-size: 2.2rem; font-weight: 900; color: var(--gold); margin-bottom: 12px; }
+  .pass-warn { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; padding: 8px 18px; border-radius: 12px; font-size: 0.95rem; font-weight: 800; display: inline-block; margin-bottom: 24px; }
+
+  .reveal-stack { display: flex; flex-direction: column; gap: 12px; perspective: 1000px; }
+  .flip-card { height: 76px; }
+  .flip-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; }
+  .flip-card.opened .flip-inner { transform: rotateX(180deg); }
+  .flip-front, .flip-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 16px; display: flex; align-items: center; padding: 12px 18px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); }
+  .flip-front { background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.15); color: #64748b; font-weight: 900; font-size: 1.25rem; letter-spacing: 4px; }
+  .flip-back { transform: rotateX(180deg); border: 2px solid; color: #fff; }
+  .fb-1 { border-color: var(--gold); background: linear-gradient(135deg, rgba(255, 190, 11, 0.35), rgba(0,0,0,0.85)); box-shadow: 0 0 25px rgba(255,190,11,0.5); }
+  .fb-2 { border-color: var(--silver); background: linear-gradient(135deg, rgba(226, 232, 240, 0.3), rgba(0,0,0,0.85)); }
+  .fb-3 { border-color: var(--bronze); background: linear-gradient(135deg, rgba(217, 119, 6, 0.3), rgba(0,0,0,0.85)); }
+
+  .rev-rank-badge { width: 44px; height: 44px; border-radius: 10px; font-weight: 900; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0; }
+  .fb-1 .rev-rank-badge { background: var(--gold); color: #000; }
+  .fb-2 .rev-rank-badge { background: var(--silver); color: #000; }
+  .fb-3 .rev-rank-badge { background: var(--bronze); color: #fff; }
+
+  .guess-box {
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .guess-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .guess-row:last-child { border-bottom: none; }
+  .guess-chips { display: flex; gap: 6px; }
+  .g-chip { font-size: 0.8rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.1); color: var(--muted); }
+  .g-chip.exact { background: #10b981; color: #fff; font-weight: 900; }
+  .g-chip.in { background: #3b82f6; color: #fff; }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .yaku-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 16px;
+    padding: 14px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .y-name { font-size: 1.2rem; font-weight: 900; }
+  .y-desc { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .y-sanrentan { color: #ff2a6d; text-shadow: 0 0 14px rgba(255,42,109,0.7); }
+  .y-sanrempuku { color: #ec4899; }
+  .y-nirentan { color: #a855f7; }
+  .y-pukupuku { color: #3b82f6; }
+  .y-tan { color: #10b981; }
+  .y-hazure { color: #64748b; }
+  .y-pts { font-size: 1.6rem; font-weight: 900; color: var(--gold); }
+
+  .lead-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .lead-row {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 16px;
+    padding: 16px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .lead-rank { font-size: 1.5rem; font-weight: 900; width: 44px; }
+  .lead-name { flex: 1; font-weight: 800; font-size: 1.1rem; }
+  .lead-pts { font-size: 1.5rem; font-weight: 900; color: var(--gold); }
+
+  .modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    z-index: 1000;
+  }
+  .modal.active { display: flex; }
+  .modal-box {
+    background: #19092e;
+    border: 2px solid var(--purple);
+    border-radius: 24px;
+    padding: 24px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .field-lbl { font-size: 0.85rem; font-weight: 800; color: var(--cyan); margin-bottom: 6px; display: block; }
+  .txt-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .txt-input:focus { outline: none; border-color: var(--gold); }
+
+button { font: inherit; color: inherit; }
+button:focus-visible, summary:focus-visible { outline:3px solid var(--cyan); outline-offset:3px; }
+.brand-button { background:linear-gradient(135deg,var(--gold),var(--primary),var(--cyan)); -webkit-background-clip:text; background-clip:text; border:0; text-align:left; letter-spacing:0; font-size:clamp(1.25rem,4.5vw,1.9rem); }
+h1 { font-size:clamp(1.2rem,4vw,1.7rem); } h2 { font-size:1.2rem; margin-bottom:12px; }
+.intro { padding:16px; border-radius:14px; background:rgba(5,217,232,.08); margin-bottom:20px; }
+.intro p { margin-top:10px; line-height:1.7; }
+.hint { color:var(--muted); font-size:.88rem; line-height:1.6; margin:10px 0; }
+.player-fields { display:grid; gap:8px; margin-bottom:10px; }
+.player-field { display:flex; gap:8px; }.player-field .btn { width:44px; flex-shrink:0; }.player-field input { margin:0; min-width:0; }
+.choice-row { display:flex; gap:8px; }.section-gap { margin-top:18px; }.custom-only { display:block; margin:16px 0; }
+.round-info { display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; font-weight:700; color:var(--muted); margin-bottom:16px; overflow-wrap:anywhere; }
+.opt-item { width:100%; text-align:left; color:white; font:inherit; }.opt-item:disabled { opacity:1; cursor:default; }
+.slot-card { cursor:default; padding:12px; gap:8px; }.slot-val { white-space:normal; overflow:visible; overflow-wrap:anywhere; }
+.slot-controls { display:flex; gap:4px; flex-shrink:0; }.slot-controls button { min-width:36px; min-height:40px; border:1px solid var(--border); border-radius:8px; background:rgba(255,255,255,.1); cursor:pointer; }.slot-controls button:disabled { opacity:.3; }
+.q-theme,.opt-txt,.pass-target,.lead-name,.winner { overflow-wrap:anywhere; }.slots-col { margin-top:14px; }
+.answer-card { display:flex; align-items:center; padding:16px; border:2px solid; border-radius:16px; min-height:76px; gap:8px; overflow-wrap:anywhere; }
+.answer-card .rev-rank-badge { margin-right:4px; }.answer-open { animation:answerReveal .45s ease-out; }
+@keyframes answerReveal { from { opacity:.35; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.guess-row { flex-wrap:wrap; gap:8px; }.guess-chips { flex-wrap:wrap; }.lead-rank { width:52px; font-size:1.2rem; flex-shrink:0; }.lead-name { min-width:0; }.lead-pts { flex-shrink:0; }
+.winner { text-align:center; font-size:1.3rem; color:var(--gold); margin:18px 0; }.btn + .btn { margin-top:10px; }.choice-row .btn + .btn { margin-top:0; }
+.rules { margin-top:20px; padding:14px; border:1px solid var(--border); border-radius:14px; }.rules p { margin:12px 0; line-height:1.6; }.rules table { width:100%; border-collapse:collapse; font-size:.85rem; }.rules td,.rules th { text-align:left; padding:8px 4px; border-bottom:1px solid var(--border); }.rules summary { cursor:pointer; font-weight:bold; }
+.custom-row { display:flex; align-items:center; gap:8px; padding:10px; background:rgba(255,255,255,.06); border-radius:10px; }.custom-row span { flex:1; overflow-wrap:anywhere; min-width:0; }.custom-row button { flex-shrink:0; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+[hidden] { display:none !important; }
+@media(max-width:480px) { body { padding:12px; }.card { padding:16px; }.slot-card { flex-wrap:wrap; }.slot-val { flex-basis:calc(100% - 80px); }.slot-controls { margin-left:auto; }.lead-row { padding:12px; }.pass-target { font-size:1.7rem; }.result-grid,.lead-grid { grid-template-columns:1fr; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
+
+</style>
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+<div class="app-wrap" id="app"></div>
+
+<!-- Custom Question Modal -->
+<div class="modal" id="cust-modal" role="dialog" aria-modal="true" aria-label="お題の作成・管理">
+  <div class="modal-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="font-size:1.3rem; font-weight:900; color:var(--gold);">✏️ お題の作成・管理</h3>
+      <button class="btn btn-sub" style="width:auto; padding:4px 12px;" onclick="closeModal()">✕</button>
+    </div>
+    <label class="field-lbl">お題のテーマ（質問文）</label>
+    <input type="text" id="m-theme" maxlength="150" aria-label="お題のテーマ" class="txt-input" placeholder="例：無人島に1つ持っていくなら？">
+    <label class="field-lbl">6つの選択肢 (A〜F)</label>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
+      <input type="text" id="m-opt-0" maxlength="120" aria-label="選択肢A" class="txt-input" placeholder="Aの選択肢" style="margin-bottom:0">
+      <input type="text" id="m-opt-1" maxlength="120" aria-label="選択肢B" class="txt-input" placeholder="Bの選択肢" style="margin-bottom:0">
+      <input type="text" id="m-opt-2" maxlength="120" aria-label="選択肢C" class="txt-input" placeholder="Cの選択肢" style="margin-bottom:0">
+      <input type="text" id="m-opt-3" maxlength="120" aria-label="選択肢D" class="txt-input" placeholder="Dの選択肢" style="margin-bottom:0">
+      <input type="text" id="m-opt-4" maxlength="120" aria-label="選択肢E" class="txt-input" placeholder="Eの選択肢" style="margin-bottom:0">
+      <input type="text" id="m-opt-5" maxlength="120" aria-label="選択肢F" class="txt-input" placeholder="Fの選択肢" style="margin-bottom:0">
+    </div>
+    <button class="btn btn-cyan" id="save-question" onclick="saveCustom()">＋ このお題を登録・保存</button>
+    <button id="cancel-edit" class="btn btn-sub" onclick="cancelEdit()" hidden>編集をキャンセル</button>
+    <hr style="border:none; border-top:1px solid rgba(255,255,255,0.15); margin:18px 0;">
+    <div class="field-lbl">登録済みカスタムお題 (<span id="cust-count">0</span>件)</div>
+    <div id="cust-list" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;"></div>
+  </div>
+</div>
+
+<script>
+const PRESETS = [
+  {"theme": "お弁当に入っていて一番テンションが上がるのは？", "opts": ["から揚げ", "ハンバーグ", "卵焼き", "タコさんウインナー", "エビフライ", "生姜焼き"]},
+  {"theme": "一生どれか1つしか食べられないなら？", "opts": ["白米", "ラーメン", "うどん", "パスタ", "焼きたてパン", "ピザ"]},
+  {"theme": "手に入ったら一番嬉しい超能力は？", "opts": ["瞬間移動", "時間停止", "透明人間", "空を飛ぶ", "他人の心が読める", "未来予知"]},
+  {"theme": "無人島に1つだけ持っていくなら？", "opts": ["サバイバルナイフ", "着火ライター", "丈夫なテント", "釣り竿セット", "スマホ（電波なし）", "大量の真水"]},
+  {"theme": "過去にタイムスリップしたらなにをする？", "opts": ["自分の黒歴史（恥ずかしい失敗）を全力で阻止する", "失敗したテストの日に戻って満点を取る", "昔の自分に「もっと勉強しろ」と説教する", "昔の大ヒットゲームやアニメをリアルタイムで楽しむ", "歴史上の偉人に会ってサインをもらう", "未来の出来事を予言して周りを驚かせる"]},
+  {"theme": "一億円をもらえる代償として許せるのは？", "opts": ["一生、スマホの通信速度が常に制限（低速）になる", "毎日必ず、小指をタンスの角にぶつける", "一生、カレーが絶対に「超甘口」になる", "お気に入りゲームのセーブデータが毎月ランダムで消える", "夏でも毎日ヒートテックを着て生活しなければならない", "一生、どんな服を着ても絶妙にダサくなる"]},
+  {"theme": "バーベキューで肉以外に焼きたいのは？", "opts": ["焼きマシュマロ（スモア）", "とうもろこし（醤油バター）", "焼きおにぎり", "海鮮（エビやホタテ）", "巨大なウインナー・フランクフルト", "玉ねぎやカボチャ（結局焦がして炭にしがち）"]},
+  {"theme": "才能をもらえるなら？", "opts": ["一度見たものを絶対に忘れない「超記憶力」", "誰とでも一瞬で仲良くなれる「圧倒的コミュ力」", "どんなスポーツでもすぐにプロ並みになる「運動神経」", "努力しなくてもテストで常に上位に入れる「天才的な頭脳」", "絵や音楽などを生み出す「芸術センス」", "毎日絶対に遅刻せず、一瞬でスッキリ起きられる「早起きの才能」"]},
+  {"theme": "生まれ変わったらなりたいのは？", "opts": ["誰もが振り返るイケメン・美女（容姿端麗）", "自由気ままに生きる飼い猫", "働かなくても生きていける大金持ちの子供", "異世界を冒険する勇者や魔法使い", "大空を自由に飛べる鳥", "別の時代の自分（もう一度自分をやり直す）"]},
+  {"theme": "思い切ってやってみたいことは？", "opts": ["髪を金髪や派手な色に染めてみる", "10万円分、好きなお菓子やゲームを爆買いする", "友達と自転車で行けるところまで限界の旅に出る", "スカイダイビングやバンジージャンプなどの絶叫系に挑戦する", "ユーチューバーになって顔出しで動画を配信する", "授業中に堂々と早弁をして、どこまでバレないか挑む"]},
+  {"theme": "魔法が1つだけ使えるとしたら？", "opts": ["空を自由に飛ぶ", "時間を止める", "透明人間になる", "好きな場所に瞬間移動する", "動物と話せるようになる", "無限にお金を出せる"]},
+  {"theme": "一生ひとつのメニューしか食べられないなら？", "opts": ["ラーメン", "お寿司", "焼肉", "カレーライス", "ピザ", "ハンバーガー"]},
+  {"theme": "日常の「地味に一番イラッとする」瞬間は？", "opts": ["靴下を履いたまま水たまり（水滴）を踏む", "イヤホンのコードがカバンの中で絡まる", "「あれ、何しようとしたんだっけ？」と目的を忘れる", "Wi-Fiの電波が急に途切れる", "服の袖がドアノブに引っかかる", "楽しみにしていた冷蔵庫のお菓子を誰かに食べられる"]},
+  {"theme": "明日世界が終わるとしたら何をする？", "opts": ["一番好きなものを限界までたらふく食べる", "家族や親友とずっと一緒に過ごす", "好きな人に思い切って告白する", "全財産を使って豪遊する", "いつも通りゲームやネットをして過ごす", "恐怖を感じないようにひたすら寝て最期を迎える"]},
+  {"theme": "朝、家を出る直前に起きたら一番絶望することは？", "opts": ["スマホの充電が1％しかないことに気づく", "急にお腹が痛くなりトイレにこもる", "今日提出の重要な宿題をやっていないことを思い出す", "着替えたばかりの服に歯磨き粉や飲み物をこぼす", "自転車の鍵（または家の鍵）がどうしても見つからない", "どしゃ降りの雨なのに傘が家に一本もない"]},
+  {"theme": "最強の「ご飯のお供」といえば？", "opts": ["生卵（卵かけご飯）", "納豆", "味付け海苔", "明太子", "鮭フレーク", "キムチ"]},
+  {"theme": "架空の世界に行けるならどこ？", "opts": ["ポケモンがいて、トレーナーになれる世界", "魔法が当たり前に使える魔法学校の世界", "「どうぶつの森」のようなスローライフな村", "剣と魔法で魔王を倒すRPGの世界", "ジブリ映画のような不思議で綺麗な世界", "スーパーヒーローが飛び交うアメコミの世界"]},
+  {"theme": "これだけは譲れない「睡眠のこだわり」は？", "opts": ["部屋が真っ暗じゃないと絶対に寝られない", "特定のぬいぐるみやタオルがないと落ち着かない", "夏でも布団や毛布をしっかり被らないと寝られない", "寝る直前まで動画の音や音楽を流しておきたい", "仰向け・横向きなど、決まった体勢じゃないと寝付けない", "少しでも物音や話し声がするとすぐに目が覚めてしまう"]},
+  {"theme": "地味だけど持っていたら便利な超能力は？", "opts": ["USBやコンセントを絶対に1発で正しい向きに挿せる", "どんな環境でも蚊に絶対に刺されなくなる", "電子レンジが鳴る1秒前に必ず気づいて止められる", "自分が探している失くし物が光って見える", "雨が降る5分前になると正確に予測できる", "どんなにひどい寝癖でも一瞬で完璧に直る"]}
+];
+
+PRESETS.push(...[{"theme": "予定のない休日、一番したいことは？", "opts": ["家で映画や動画を見る", "友達と遊びに出かける", "自然の中を散歩する", "好きなものを作る", "買い物や食べ歩きをする", "時間を気にせず寝る"]}, {"theme": "旅行先で一番楽しみにするのは？", "opts": ["ご当地グルメを食べる", "きれいな景色を見る", "温泉やホテルでくつろぐ", "歴史や文化に触れる", "テーマパークで遊ぶ", "お土産を探す"]}, {"theme": "もらったら一番うれしいプレゼントは？", "opts": ["好きなお菓子の詰め合わせ", "趣味に使える道具", "手書きの手紙", "一緒に楽しめる体験チケット", "自分では買わない便利グッズ", "好きなものを選べるギフト券"]}, {"theme": "一日だけ体験できるなら、どの仕事をやってみたい？", "opts": ["水族館の飼育員", "ゲームの開発者", "お菓子職人", "宇宙飛行士", "映画の俳優", "電車の運転士"]}, {"theme": "雨の日を楽しく過ごすなら？", "opts": ["ボードゲームで遊ぶ", "お菓子を作る", "本や漫画を読む", "部屋の模様替えをする", "家でカラオケを楽しむ", "雨の音を聞きながらのんびりする"]}, {"theme": "お祭りで最初に向かいたい屋台は？", "opts": ["たこ焼き", "かき氷", "チョコバナナ", "焼きそば", "射的", "金魚すくい"]}, {"theme": "自分だけの秘密基地に置きたいものは？", "opts": ["大きなソファ", "ゲーム機と大画面", "お菓子いっぱいの棚", "本や漫画の本棚", "音楽を楽しむスピーカー", "星空が見える天窓"]}, {"theme": "友達とチームを組むなら、どんな役割をやりたい？", "opts": ["みんなをまとめるリーダー", "面白いアイデアを出す人", "計画や作戦を考える人", "手を動かして形にする人", "困った人を助けるサポート役", "場を盛り上げるムードメーカー"]}, {"theme": "一週間だけ動物の生活を体験するなら？", "opts": ["海を泳ぐイルカ", "森を駆けるオオカミ", "のんびり過ごすパンダ", "木の上で暮らすリス", "氷の上を歩くペンギン", "花をめぐるチョウ"]}, {"theme": "宝箱から出てきたら一番わくわくするのは？", "opts": ["未知の島への地図", "願いが一つかなう券", "どこでも開く不思議な鍵", "自分だけの冒険の招待状", "昔の人が残した秘密の日記", "まだ誰も見たことのない宝石"]}]);
+
+const LETTERS = ["A","B","C","D","E","F"];
+
+const Sound = {
+  enabled: true, ctx: null,
+  init() { if (!this.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this.ctx = new AC(); } },
+  toggle() { this.enabled = !this.enabled; render(); },
+  play(freq, type, dur, delay=0, vol=0.15) {
+    if (!this.enabled) return;
+    try {
+      this.init(); if (!this.ctx) return;
+      const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+      osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime + delay);
+      gain.gain.setValueAtTime(vol, this.ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + delay + dur);
+      osc.connect(gain); gain.connect(this.ctx.destination);
+      osc.start(this.ctx.currentTime + delay); osc.stop(this.ctx.currentTime + delay + dur);
+    } catch(e) {}
+  },
+  click() { this.play(550, 'sine', 0.05, 0, 0.1); },
+  drumRoll() { for (let i = 0; i < 8; i++) this.play(110 + i * 16, 'triangle', 0.07, i * 0.06, 0.2); },
+  fanfare(r) {
+    if (r===3) { this.play(392,'triangle',0.2); this.play(523,'triangle',0.35,0.15); }
+    else if (r===2) { this.play(440,'triangle',0.18); this.play(554,'triangle',0.18,0.12); this.play(659,'triangle',0.4,0.24); }
+    else if (r===1) { this.play(523,'square',0.15); this.play(659,'square',0.15,0.12); this.play(784,'square',0.2,0.24); this.play(1046,'square',0.5,0.38); }
+  },
+  win() { Array.of(523, 659, 784, 1046, 1318).forEach((f,i)=>this.play(f,'sine',0.2,i*0.08,0.2)); }
+};
+
+const Confetti = {
+  canvas: document.getElementById('confetti-canvas'), particles: [], animId: null,
+  fire(count=70) {
+    this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight;
+    const colors = ['#ff2a6d','#ffbe0b','#05d9e8','#9d4edd','#10b981','#ffffff'];
+    for (let i = 0; i < count; i++) {
+      this.particles.push({
+        x: this.canvas.width * (0.2 + 0.6 * Math.random()), y: this.canvas.height * 0.5,
+        vx: (Math.random() - 0.5) * 16, vy: (Math.random() - 0.8) * 18,
+        size: Math.random() * 8 + 4, color: colors[Math.floor(Math.random() * colors.length)],
+        rot: Math.random() * 360, vr: (Math.random() - 0.5) * 10, a: 1
+      });
+    }
+    if (!this.animId) this.loop();
+  },
+  loop() {
+    const ctx = this.canvas.getContext('2d');
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles.at(i); p.x += p.vx; p.y += p.vy; p.vy += 0.4; p.rot += p.vr; p.a -= 0.012;
+      ctx.save(); ctx.globalAlpha = Math.max(0, p.a); ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.color; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); ctx.restore();
+      if (p.a <= 0 || p.y > this.canvas.height) this.particles.splice(i, 1);
+    }
+    if (this.particles.length > 0) this.animId = requestAnimationFrame(() => this.loop());
+    else this.animId = null;
+  }
+};
+
+function getCustomQ() { try { return JSON.parse(localStorage.getItem('sanrentan_custom_q')||'[]'); } catch(e){ return []; } }
+function setCustomQ(list) { localStorage.setItem('sanrentan_custom_q', JSON.stringify(list)); }
+
+function evaluateYaku(h, g) {
+  const allMatch = h.length === 3 && g.length === 3 && h.every((v, i) => v === g.at(i));
+  if (allMatch) return { name: "サンレンタン！", pts: 6, cls: "y-sanrentan", desc: "1〜3位の選択肢と着順が完全一致！" };
+  const hSet = new Set(h), gSet = new Set(g);
+  const common = [...gSet].filter(x => hSet.has(x)).length;
+  if (common === 3) return { name: "サンレンプク！", pts: 4, cls: "y-sanrempuku", desc: "1〜3位の選択肢3つが順位不問で一致！" };
+  if (h.at(0) === g.at(0) && h.at(1) === g.at(1)) return { name: "ニレンタン！", pts: 3, cls: "y-nirentan", desc: "1位と2位の選択肢と着順が一致！" };
+  if (common >= 2) return { name: "プクプク！", pts: 2, cls: "y-pukupuku", desc: "1〜3位中2つの選択肢が一致！" };
+  if (h.at(0) === g.at(0)) return { name: "タン！", pts: 1, cls: "y-tan", desc: "1位の選択肢と着順が一致！" };
+  return { name: "ハズレ", pts: 0, cls: "y-hazure", desc: "残念！一致しませんでした" };
+}
+
+/* ローカル版：ネット接続不要。入力はすべて文字として表示する。 */
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let state = { view:'SETUP', players:Array.from({length:4},(_,i)=>({id:'p'+i,name:'プレイヤー'+(i+1)})), totalLaps:1, useCustomOnly:false, round:0, hostIdx:0, deck:[], hostAns:[], guesses:{}, curGuess:[], curGuesserIdx:0, scores:{}, revealStep:0 };
+let editingQuestion = null;
+let revealTimer = null;
+let nextPlayerId = 4;
+const baseEvaluateYaku = evaluateYaku;
+evaluateYaku = function(h,g) {
+  const valid = a => Array.isArray(a) && a.length===3 && new Set(a).size===3 && a.every(n=>Number.isInteger(n)&&n>=0&&n<6);
+  return valid(h)&&valid(g) ? baseEvaluateYaku(h,g) : {name:'ハズレ',pts:0,cls:'y-hazure',desc:'回答が未完成です'};
+};
+function safeCustoms() {
+  const value=getCustomQ();
+  return Array.isArray(value) ? value.filter(q=>q&&typeof q.theme==='string'&&Array.isArray(q.opts)&&q.opts.length===6&&q.opts.every(o=>typeof o==='string')) : [];
+}
+function saveQuestions(list) {
+  try { setCustomQ(list); return true; }
+  catch(e) { alert('お題を保存できませんでした。ブラウザーの保存設定や空き容量を確認してください。'); return false; }
+}
+function shuffle(values) {
+  const out=[...values];
+  for(let i=out.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [out[i],out[j]]=[out[j],out[i]]; }
+  return out;
+}
+function clearConfetti() { if(Confetti.animId)cancelAnimationFrame(Confetti.animId);Confetti.animId=null;Confetti.particles=[];if(Confetti.canvas)Confetti.canvas.getContext('2d').clearRect(0,0,Confetti.canvas.width,Confetti.canvas.height); }
+function button(label,action,kind='pink',disabled=false) { return `<button class="btn btn-${kind}" onclick="${action}" ${disabled?'disabled':''}>${label}</button>`; }
+function headerHtml() { return `<header><button class="brand brand-button" onclick="goHome()">🎲 サンレンタン！</button><button class="sound-btn" onclick="Sound.toggle()" aria-label="音を切り替える">${Sound.enabled?'🔊 ON':'🔇 OFF'}</button></header>`; }
+function guessers() { return state.players.filter((_,i)=>i!==state.hostIdx); }
+function host() { return state.players[state.hostIdx]; }
+function progress() { return `<div class="round-info"><span>ラウンド ${state.round} / ${state.totalRounds}</span><span>👑 出題者：${escapeHtml(host().name)}</span></div>`; }
+function theme() { return `<div class="q-banner"><div class="q-theme">${escapeHtml(state.currentQ.theme)}</div></div>`; }
+function options(role) {
+  const arr=role==='host'?state.hostAns:state.curGuess;
+  return `<div class="opt-grid">${state.currentQ.opts.map((o,i)=>{const rank=arr.indexOf(i);return `<button class="opt-item ${role?'selectable':''} ${role&&rank>=0?'sel-'+(rank+1):''}" ${role?`onclick="pickOpt('${role}',${i})" aria-pressed="${rank>=0}"`: 'disabled'}><span class="opt-char">${LETTERS[i]}</span><span class="opt-txt">${escapeHtml(o)}</span>${role&&rank>=0?`<span class="rank-pill p${rank+1}">${rank+1}位</span>`:''}</button>`;}).join('')}</div>`;
+}
+function slots(role) {
+  const arr=role==='host'?state.hostAns:state.curGuess;
+  return `<div class="slots-col">${[0,1,2].map(r=>`<div class="slot-card ${arr[r]!==undefined?'filled':''}"><span class="slot-lbl l${r+1}">${['🥇','🥈','🥉'][r]} ${r+1}位</span><span class="slot-val">${arr[r]!==undefined?escapeHtml(state.currentQ.opts[arr[r]]):'未選択'}</span>${arr[r]!==undefined?`<div class="slot-controls"><button onclick="movePick('${role}',${r},-1)" ${r===0?'disabled':''} aria-label="${r+1}位を上へ">↑</button><button onclick="movePick('${role}',${r},1)" ${r>=arr.length-1?'disabled':''} aria-label="${r+1}位を下へ">↓</button><button onclick="removePick('${role}',${r})" aria-label="${r+1}位の選択を解除">✕</button></div>`:''}</div>`).join('')}</div>`;
+}
+function render() {
+  let content='';
+  if(state.view==='SETUP') {
+    const customs=safeCustoms();
+    content=`<div class="intro"><h1>あの人の「好きな順」を当てよう！</h1><p>① 出題者が6択から1〜3位を選ぶ → ② みんなが予想 → ③ 答え合わせ</p><p>端末1台を順番に渡して、2〜6人で遊べます。全員が1回ずつ出題すると1周です。</p></div><div class="layout-grid-2"><div><h2>👥 プレイヤー設定</h2><div class="player-fields">${state.players.map((p,i)=>`<div class="player-field"><label class="sr-only" for="player-${i}">プレイヤー${i+1}の名前</label><input id="player-${i}" class="txt-input" maxlength="24" value="${escapeHtml(p.name)}" onchange="updateName(${i},this.value)">${button('✕',`removePlayer(${i})`,'sub',state.players.length<=2)}</div>`).join('')}</div>${button('＋ プレイヤー追加','addPlayer()','sub',state.players.length>=6)}<h3 class="section-gap">🔁 プレイ周回数</h3><div class="choice-row">${[1,2].map(n=>button(`${n}周（${state.players.length*n}戦）`,`setLaps(${n})`,state.totalLaps===n?'pink':'sub')).join('')}</div></div><div><h2>📝 お題</h2><p class="hint">プリセット${PRESETS.length}問・自作${customs.length}問</p>${button('お題を追加・編集する','openModal()','cyan')}<label class="custom-only"><input type="checkbox" ${state.useCustomOnly?'checked':''} ${customs.length?'':'disabled'} onchange="state.useCustomOnly=this.checked"> 自作お題だけで遊ぶ</label>${button('🏠 この端末1台でスタート！','startLocalGame()')}</div></div><details class="rules"><summary>📖 ルールと配点</summary><p>出題者はお題に沿って、自分の好みの順に3つ選びます。他の人はその順位を予想します。出題者にはその回の得点は入りません。</p><table><thead><tr><th>役</th><th>条件</th><th>点</th></tr></thead><tbody><tr><td>サンレンタン</td><td>1〜3位すべて順位も一致</td><td>6</td></tr><tr><td>サンレンプク</td><td>3つ一致・順位不問</td><td>4</td></tr><tr><td>ニレンタン</td><td>1位・2位が順位も一致</td><td>3</td></tr><tr><td>プクプク</td><td>2つ一致・順位不問</td><td>2</td></tr><tr><td>タン</td><td>1位が一致</td><td>1</td></tr><tr><td>ハズレ</td><td>上の条件に当てはまらない</td><td>0</td></tr></tbody></table><p>複数の役に当てはまる場合は、最も高い役の点数だけ獲得します。最高点が同じなら同点優勝です。</p></details>`;
+  } else if(state.view==='Q_CONFIRM') {
+    content=`${progress()}<h2>全員でお題を確認しよう</h2><div class="layout-grid-2">${theme()}${options('')}</div><div class="choice-row section-gap">${button('🔄 お題を変更','nextQuestion()','sub')}${button('出題者の選択へ →','handleConfirmToPick()')}</div>`;
+  } else if(state.view==='PASS_HOST'||state.view==='PASS_GUESS') {
+    const isHost=state.view==='PASS_HOST', p=isHost?host():guessers()[state.curGuesserIdx];
+    content=`${progress()}<div class="pass-card"><div class="pass-icon">${isHost?'👑🤫':'🕵️📱'}</div><p>端末を${isHost?'出題者':'回答者'}へ渡してください${isHost?'':`（${state.curGuesserIdx+1}/${guessers().length}人目）`}</p><div class="pass-target">${escapeHtml(p.name)}さん</div><div class="pass-warn">${escapeHtml(p.name)}さん以外は画面を見ないでください</div>${button(`${escapeHtml(p.name)}です（${isHost?'秘密の選択':'予想'}へ）`,isHost?'beginHost()':'beginGuess()',isHost?'gold':'cyan')}</div>`;
+  } else if(state.view==='HOST_SELECT'||state.view==='GUESS_SELECT') {
+    const isHost=state.view==='HOST_SELECT',role=isHost?'host':'guess',p=isHost?host():guessers()[state.curGuesserIdx],arr=isHost?state.hostAns:state.curGuess;
+    content=`${progress()}<h2>${isHost?'👑 出題者':'🕵️ 予想中'}：${escapeHtml(p.name)}さん</h2><p class="hint">${isHost?'自分の好みの順に3つ選んでください。':`${escapeHtml(host().name)}さんの1〜3位を予想してください。`} 選んだ順が順位になります。</p><div class="layout-grid-2"><div>${theme()}${slots(role)}<p class="hint">↑↓で順位を入れ替え、✕で解除できます。解除すると後の順位が繰り上がります。</p>${button(arr.length===3?'決定する':'3位まで選んでください',isHost?'commitHost()':'commitGuess()',isHost?'pink':'cyan',arr.length!==3)}</div>${options(role)}</div>`;
+  } else if(state.view==='REVEAL') {
+    content=`${progress()}<h2>🎉 全員で答え合わせ！</h2>${theme()}<div class="reveal-stack section-gap">${[0,1,2].map(r=>{const open=state.revealStep>=3-r;return `<div class="answer-card fb-${r+1} ${open?'answer-open':''}"><span class="rev-rank-badge">${r+1}位</span><span>${open?escapeHtml(state.currentQ.opts[state.hostAns[r]]):'？？？'}</span></div>`;}).join('')}</div><div class="guess-box section-gap"><h3>みんなの予想</h3><p class="hint">◎ 順位まで的中 ／ ○ 発表済みの選択肢に含まれる</p>${guessers().map(p=>`<div class="guess-row"><strong>${escapeHtml(p.name)}</strong><div class="guess-chips">${state.guesses[p.id].map((a,r)=>{const exact=state.revealStep>=3-r&&state.hostAns[r]===a,inside=state.hostAns.slice(3-state.revealStep).includes(a);return `<span class="g-chip ${exact?'exact':inside?'in':''}">${r+1}位：${LETTERS[a]} ${exact?'◎':inside?'○':''}</span>`;}).join('')}</div></div>`).join('')}</div><div class="section-gap">${state.revealStep<3?button(`🥁 第${3-state.revealStep}位を発表！`,'handleStepReveal()',state.revealStep===2?'pink':'gold',!!revealTimer):button('🎯 得点を見る','handleCalcScores()','cyan')}</div>`;
+  } else if(state.view==='SCORE_REVEAL') {
+    content=`${progress()}<h2>🎯 今回の得点</h2><div class="result-grid">${guessers().map(p=>{const res=evaluateYaku(state.hostAns,state.guesses[p.id]);return `<div class="yaku-card"><div><strong>${escapeHtml(p.name)}</strong><div class="y-name ${res.cls}">${res.name}</div><p class="hint">${res.desc}</p></div><div class="y-pts">+${res.pts}点</div></div>`;}).join('')}</div><p class="hint">💬 出題者に「どうしてその順番にしたの？」と聞いてみよう！</p>${button('📊 ランキングへ','handleGoToScoreBoard()','cyan')}`;
+  } else if(state.view==='SCORE_BOARD') {
+    const over=state.round>=state.totalRounds,sorted=[...state.players].sort((a,b)=>state.scores[b.id]-state.scores[a.id]),top=state.scores[sorted[0].id],winners=sorted.filter(p=>state.scores[p.id]===top);
+    content=`${progress()}<h2>${over?'🏆 最終結果':'📊 現在のランキング'}</h2><div class="lead-grid">${sorted.map((p,i)=>{const rank=sorted.findIndex(s=>state.scores[s.id]===state.scores[p.id])+1;return `<div class="lead-row"><span class="lead-rank">${rank}位</span><span class="lead-name">${escapeHtml(p.name)}</span><span class="lead-pts">${state.scores[p.id]}点</span></div>`;}).join('')}</div>${over?`<p class="winner">🎉 ${winners.length>1?'同点優勝':'優勝'}：${winners.map(p=>escapeHtml(p.name)+'さん').join('、')}</p>${button('🔄 同じメンバーでもう一度','startLocalGame()','gold')}${button('設定画面に戻る','resetGame()','sub')}`:button('次のラウンドへ →','handleNextRound()')}`;
+  }
+  document.getElementById('app').innerHTML=headerHtml()+`<main class="card">${content}</main>`;
+}
+function updateName(i,value) { state.players[i].name=value.trim()||'プレイヤー'+(i+1); document.getElementById('player-'+i).value=state.players[i].name; }
+function addPlayer() { if(state.players.length>=6)return; state.players.push({id:'p'+nextPlayerId++,name:'プレイヤー'+(state.players.length+1)});render(); }
+function removePlayer(i) { if(state.players.length<=2)return;state.players.splice(i,1);render(); }
+function setLaps(n) {state.totalLaps=n;render();}
+function startLocalGame() {
+  if(state.players.length<2||state.players.length>6)return;
+  if(revealTimer)clearTimeout(revealTimer);revealTimer=null;
+  state.players.forEach((p,i)=>p.name=p.name.trim()||'プレイヤー'+(i+1));
+  const customs=safeCustoms();state.pool=state.useCustomOnly&&customs.length?customs:[...PRESETS,...customs];
+  state.deck=shuffle(state.pool);state.hostIdx=0;state.round=1;state.totalRounds=state.players.length*state.totalLaps;
+  state.scores=Object.fromEntries(state.players.map(p=>[p.id,0]));Sound.click();nextQuestion();
+}
+function nextQuestion() {
+  clearConfetti();
+  if(!state.deck.length)state.deck=shuffle(state.pool);
+  const previous=state.currentQ;
+  if(state.deck.length>1&&state.deck[state.deck.length-1]===previous) [state.deck[0],state.deck[state.deck.length-1]]=[state.deck[state.deck.length-1],state.deck[0]];
+  state.currentQ=state.deck.pop();state.hostAns=[];state.guesses={};state.curGuess=[];state.curGuesserIdx=0;state.revealStep=0;state.view='Q_CONFIRM';render();
+}
+function handleConfirmToPick() {if(state.view!=='Q_CONFIRM')return;Sound.click();state.view='PASS_HOST';render();}
+function beginHost() {if(state.view!=='PASS_HOST')return;state.hostAns=[];state.view='HOST_SELECT';Sound.click();render();}
+function beginGuess() {if(state.view!=='PASS_GUESS')return;state.curGuess=[];state.view='GUESS_SELECT';Sound.click();render();}
+function pickOpt(role,i) {
+  if(state.view!==(role==='host'?'HOST_SELECT':'GUESS_SELECT'))return;
+  const arr=role==='host'?state.hostAns:state.curGuess,p=arr.indexOf(i);
+  if(p>=0)arr.splice(p,1);else if(arr.length<3)arr.push(i);Sound.click();render();
+}
+function removePick(role,i) {const arr=role==='host'?state.hostAns:state.curGuess;arr.splice(i,1);Sound.click();render();}
+function movePick(role,i,delta) {const arr=role==='host'?state.hostAns:state.curGuess,j=i+delta;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];Sound.click();render();}
+function commitHost() {if(state.view!=='HOST_SELECT'||state.hostAns.length!==3)return;state.view='PASS_GUESS';state.curGuesserIdx=0;Sound.click();render();}
+function commitGuess() {
+  if(state.view!=='GUESS_SELECT'||state.curGuess.length!==3)return;
+  state.guesses[guessers()[state.curGuesserIdx].id]=[...state.curGuess];state.curGuess=[];state.curGuesserIdx++;
+  state.view=state.curGuesserIdx<guessers().length?'PASS_GUESS':'REVEAL';Sound.click();render();
+}
+function handleStepReveal() {
+  if(state.view!=='REVEAL'||state.revealStep>=3||revealTimer)return;
+  Sound.drumRoll();revealTimer=setTimeout(()=>{revealTimer=null;state.revealStep++;Sound.fanfare(4-state.revealStep);if(state.revealStep===3)Confetti.fire(80);render();},380);render();
+}
+function handleCalcScores() {
+  if(state.view!=='REVEAL'||state.revealStep!==3)return;
+  guessers().forEach(p=>state.scores[p.id]+=evaluateYaku(state.hostAns,state.guesses[p.id]).pts);
+  state.view='SCORE_REVEAL';Sound.win();render();
+}
+function handleGoToScoreBoard() {if(state.view!=='SCORE_REVEAL')return;state.view='SCORE_BOARD';if(state.round>=state.totalRounds){Confetti.fire(140);Sound.win();}render();}
+function handleNextRound() {if(state.view!=='SCORE_BOARD'||state.round>=state.totalRounds)return;state.round++;state.hostIdx=(state.hostIdx+1)%state.players.length;nextQuestion();}
+function resetGame() {if(revealTimer)clearTimeout(revealTimer);revealTimer=null;clearConfetti();state.hostAns=[];state.guesses={};state.curGuess=[];state.view='SETUP';render();}
+function goHome() {if(state.view==='SETUP')return;if(confirm('設定画面に戻りますか？現在のゲームは終了します。'))resetGame();}
+function openModal() {editingQuestion=null;clearQuestionForm();document.getElementById('cust-modal').classList.add('active');refreshModalList();document.getElementById('m-theme').focus();}
+function closeModal() {document.getElementById('cust-modal').classList.remove('active');render();}
+function clearQuestionForm() {document.getElementById('m-theme').value='';for(let i=0;i<6;i++)document.getElementById('m-opt-'+i).value='';document.getElementById('save-question').textContent='＋ このお題を登録・保存';document.getElementById('cancel-edit').hidden=true;}
+function cancelEdit() {editingQuestion=null;clearQuestionForm();}
+function refreshModalList() {
+  const customs=safeCustoms();document.getElementById('cust-count').textContent=customs.length;
+  document.getElementById('cust-list').innerHTML=customs.length?customs.map((q,i)=>`<div class="custom-row"><span>${escapeHtml(q.theme)}</span><button class="sound-btn" onclick="editQ(${i})">編集</button><button class="sound-btn" onclick="deleteQ(${i})">削除</button></div>`).join(''):'<p class="hint">自作お題はまだありません。保存先はこのブラウザーです。</p>';
+}
+function editQ(i) {const q=safeCustoms()[i];if(!q)return;editingQuestion=i;document.getElementById('m-theme').value=q.theme;q.opts.forEach((o,j)=>document.getElementById('m-opt-'+j).value=o);document.getElementById('save-question').textContent='変更を保存する';document.getElementById('cancel-edit').hidden=false;document.getElementById('m-theme').focus();}
+function saveCustom() {
+  const theme=document.getElementById('m-theme').value.trim(),opts=Array.from({length:6},(_,i)=>document.getElementById('m-opt-'+i).value.trim());
+  if(!theme||opts.some(o=>!o)){alert('お題と6つの選択肢をすべて入力してください。');return;}
+  if(new Set(opts).size!==6){alert('選択肢が重複しています。6つの異なる選択肢にしてください。');return;}
+  const customs=safeCustoms();if(editingQuestion===null)customs.push({theme,opts});else customs[editingQuestion]={theme,opts};
+  if(!saveQuestions(customs))return;cancelEdit();refreshModalList();Sound.click();
+}
+function deleteQ(i) {if(!confirm('このお題を削除しますか？'))return;const customs=safeCustoms();customs.splice(i,1);if(!saveQuestions(customs))return;cancelEdit();if(!customs.length)state.useCustomOnly=false;refreshModalList();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('cust-modal').classList.contains('active'))closeModal();});
+render();
+
+</script>
+</body>
+</html>
